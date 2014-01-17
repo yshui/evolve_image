@@ -1,0 +1,39 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>App1</title>
+	<script src="/js/default.js"></script>
+	<style>
+		.image{
+			float: left;
+		}
+	</style>
+</head>
+<body onload="init()">
+    <p id="fitness">Content goes here</p>
+	<p id="fitness_p">Content goes here</p>
+	<p id="mr">Content goes here</p>
+	<p id="gmin">Content goes here</p>
+    <p id="generation">0</p>
+	<div class="image">
+		Original<br />
+		<canvas id="canvas_input"></canvas>
+	</div>
+
+	<div class="image">
+		Best<br />
+		<canvas id="canvas_best"></canvas>
+	</div>
+
+	<div class="image">
+		Evolving<br />
+		<canvas id="canvas_test"></canvas>
+	</div>
+
+	<div class="image">
+		Generation Best<br />
+		<canvas id="canvas_gbest"></canvas>
+	</div>
+</body>
+</html>
