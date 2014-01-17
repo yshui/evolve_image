@@ -1,4 +1,7 @@
-﻿function draw_shape(ctx, shape, color) {
+﻿var CTX_INPUT, CTX_TEST, CTX_BEST, cgbest;
+var SUBPIXELS;
+var DATA_INPUT;
+function draw_shape(ctx, shape, color) {
 	ctx.fillStyle = "rgba(" + color.r + "," + color.g + "," + color.b + "," + color.a + ")";
 	ctx.beginPath();
 	ctx.moveTo(shape[0].x, shape[0].y);
@@ -9,12 +12,13 @@
 	ctx.fill();
 }
 
-function draw_dna(ctx, dna) {
+function draw_dna(ctx, dna, callback) {
 	ctx.fillStyle = "rgb(255,255,255)";
 	ctx.fillRect(0, 0, IWIDTH, IHEIGHT);
-	for (var i in dna) {
-		drawShape(ctx, dna[i].shape, dna[i].color);
+	for (i = 0; i < dna.length; i++) {
+		draw_shape(ctx, dna[i].shape, dna[i].color);
 	}
+	setTimeout(callback, 0);
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function rand_int(maxval) {
@@ -35,11 +39,16 @@ function dna_cross(dna1, dna2) {
 	if (dna1.length != dna2.length)
 		return;
 	var a = rand_int(dna1.length - 1);
-	var b = rand_int(dna1.length - 1);
-	return {
+	var b = rand_int(dna1.length - a - 2) + a + 1;
+	var res = {
 		dna_out1: dna1.slice(0, a).concat(dna2.slice(a, b).concat(dna1.slice(b, dna1.length))),
-		dna_out2: dna2.slice(0, a).concat(dna1.slice(a, b).concat(dna2.slice(b, dna1.length)))
+		dna_out2: dna2.slice(0, a).concat(dna1.slice(a, b).concat(dna2.slice(b, dna2.length)))
 	};
+	if (res.dna_out1.length != dna1.length)
+		throw "length didn't match.";
+	if (res.dna_out2.length != dna1.length)
+		throw "length didn't match.";
+	return JSON.parse(JSON.stringify(res));
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -107,7 +116,7 @@ function draw_dist(ctx, dist) {
 }
 
 function mutate_gauss(dna_out) {
-	CHANGED_SHAPE_INDEX = rand_int(ACTUAL_SHAPES - 1);
+	CHANGED_SHAPE_INDEX = rand_int(dna_out.length - 1);
 
 	var roulette = rand_float(2.0);
 
@@ -133,7 +142,7 @@ function mutate_gauss(dna_out) {
 
 		// mutate shape
 	else {
-		var CHANGED_POINT_INDEX = rand_int(ACTUAL_POINTS - 1);
+		var CHANGED_POINT_INDEX = rand_int(dna_out[CHANGED_SHAPE_INDEX].shape.length - 1 - 1);
 
 		// x-coordinate
 		if (roulette < 1.5) {
@@ -149,7 +158,7 @@ function mutate_gauss(dna_out) {
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function mutate_medium(dna_out) {
-	CHANGED_SHAPE_INDEX = rand_int(ACTUAL_SHAPES - 1);
+	CHANGED_SHAPE_INDEX = rand_int(dna_out.length - 1);
 
 	var roulette = rand_float(2.0);
 
@@ -175,7 +184,7 @@ function mutate_medium(dna_out) {
 
 		// mutate shape
 	else {
-		var CHANGED_POINT_INDEX = rand_int(ACTUAL_POINTS - 1);
+		var CHANGED_POINT_INDEX = rand_int(dna_out[CHANGED_SHAPE_INDEX].shape.length - 1 - 1);
 
 		// x-coordinate
 		if (roulette < 1.5) {
@@ -190,20 +199,20 @@ function mutate_medium(dna_out) {
 }
 
 function mutate_hard(dna_out) {
-	CHANGED_SHAPE_INDEX = rand_int(ACTUAL_SHAPES - 1);
+	CHANGED_SHAPE_INDEX = rand_int(dna_out.length - 1);
 
 	dna_out[CHANGED_SHAPE_INDEX].color.r = rand_int(255);
 	dna_out[CHANGED_SHAPE_INDEX].color.g = rand_int(255);
 	dna_out[CHANGED_SHAPE_INDEX].color.b = rand_int(255);
 	dna_out[CHANGED_SHAPE_INDEX].color.a = rand_float(1.0);
-	var CHANGED_POINT_INDEX = rand_int(ACTUAL_POINTS - 1);
+	var CHANGED_POINT_INDEX = rand_int(dna_out.shape.length - 1);
 
 	dna_out[CHANGED_SHAPE_INDEX].shape[CHANGED_POINT_INDEX].x = rand_int(IWIDTH);
 	dna_out[CHANGED_SHAPE_INDEX].shape[CHANGED_POINT_INDEX].y = rand_int(IHEIGHT);
 }
 
 function mutate_soft(dna_out) {
-	CHANGED_SHAPE_INDEX = rand_int(ACTUAL_SHAPES - 1);
+	CHANGED_SHAPE_INDEX = rand_int(dna_out.length - 1);
 
 	var roulette = rand_float(2.0);
 
@@ -231,7 +240,7 @@ function mutate_soft(dna_out) {
 
 		// mutate shape
 	else {
-		var CHANGED_POINT_INDEX = rand_int(ACTUAL_POINTS - 1);
+		var CHANGED_POINT_INDEX = rand_int(dna_out[CHANGED_SHAPE_INDEX].shape.length - 1);
 
 		// x-coordinate
 		if (roulette < 1.5) {
@@ -245,58 +254,84 @@ function mutate_soft(dna_out) {
 	}
 }
 
-function compute_fitness(dna) {
+function compute_fitness(dna, callback) {
 	var fitness = 0;
+	draw_dna(CTX_TEST, dna, function () {
+		DATA_TEST = CTX_TEST.getImageData(0, 0, IWIDTH, IHEIGHT).data;
 
-	DATA_TEST = CTX_TEST.getImageData(0, 0, IWIDTH, IHEIGHT).data;
-
-	for (var i = 0; i < SUBPIXELS; ++i) {
-		if (i % DEPTH != 3) {
-			var dist = DATA_INPUT[i] - DATA_TEST[i];
-			fitness += dist * dist;
+		for (var i = 0; i < SUBPIXELS; ++i) {
+			if (i % 4 != 3) {
+				var dist = DATA_INPUT[i] - DATA_TEST[i];
+				fitness += dist * dist;
+			}
 		}
-	}
 
-	return fitness;
+		dna.fitness = fitness;
+		callback(fitness);
+	});
 }
-var mutate_rate = 0.1;
+var mutate_rate = 0.3;
 function dna_mutate(dna) {
-	if (Math.random(1.0) > mutata_rate)
-		return;
-	mutate_medium(dna)
+	if (Math.random(1.0) > mutate_rate)
+		return dna;
+	mutate_medium(dna);
+	return dna;
 }
-var max = 0;
-function pre_reproduction(dnas) {
+var min = 9e99;
+function compute_all_fitness(id, dnas, callback) {
+	if (id >= dnas.length)
+		return callback.call(this, dnas);
+	compute_fitness(dnas[id], function (fitness) {
+		dnas[id].fitness = fitness;
+		compute_all_fitness(id + 1, dnas, callback);
+	});
+}
+function pre_reproduction(dnas, callback) {
 	var i;
-	var min = 9e99, sum = 0.0;
-	for (i in dnas) {
-		dnas[i].fitness = compute_fitness(dnas[i]);
-		if (dnas[i].fitness < min)
-			min = dnas[i].fitness;
-		if (dnas[i].fitness > max) {
-			max = dnas[i].fitness;
-			draw_dna(CTX_BEST, dnas[i]);
+	var max = 0, sum = 0.0, gmin = 9e99;
+	compute_all_fitness(0, dnas, function (ndnas) {
+		for (i in ndnas) {
+			if (ndnas[i].fitness < min) {
+				min = ndnas[i].fitness;
+				draw_dna(CTX_BEST, dnas[i]);
+			}
+			if (ndnas[i].fitness < gmin) {
+				gmin = ndnas[i].fitness;
+				draw_dna(cgbest, dnas[i]);
+			}
+			if (ndnas[i].fitness > max)
+				max = ndnas[i].fitness;
+			sum += ndnas[i].fitness;
 		}
-		sum += dnas[i].fitness;
-	}
-	sum -= dnas.length * min;
-	for (i in dnas) {
-		dnas[i].fitness = (dnas[i].fitness - min) / sum;
-		if (i > 0)
-			dnas[i].fitness += dnas[i - 1].fitness;
-	}
+		sum = ndnas.length * max - sum;
+		for (i in ndnas)
+			ndnas[i].prob = (max - ndnas[i].fitness) / sum;
+		ndnas.sort(function (a, b) { return b.prob - a.prob; });
+		for (i = 1; i < ndnas.length; i++)
+			ndnas[i].prob += ndnas[i - 1].prob;
+		document.getElementById("fitness").innerHTML = min;
+		document.getElementById("fitness_p").innerHTML = min / maxd;
+		mutate_rate = 0.9;//Math.sqrt(Math.sqrt(min / maxd));
+		document.getElementById("mr").innerHTML = mutate_rate;
+		document.getElementById("gmin").innerHTML = gmin;
+		callback.call(this, ndnas);
+	});
 }
 function prob_select(dnas) {
 	var prob = Math.random(1.0);
 	var l = 0, r = dnas.length;
 	while (l < r - 1) {
 		var mid = (l + r) >> 1;
-		if (dnas[mid] < prob)
+		if (dnas[mid].prob < prob)
 			l = mid;
-		else if (dnas[mid] > prob)
+		else if (dnas[mid].prob > prob)
 			r = mid;
-		else return dnas[mid];
+		else {
+			console.log("selected:" + mid);
+			return dnas[mid];
+		}
 	}
+	console.log("selected:" + l);
 	return dnas[l];
 }
 function select_parents(dnas) {
@@ -305,48 +340,90 @@ function select_parents(dnas) {
 		dna2: prob_select(dnas)
 	}
 }
+var gen = 0;
 function reproduction(dnas) {
-	//80% previous dnas die, replaced by their offsprings.
-	var new_dnas = dnas.slice(0, Math.floor(dnas.length * 0.8));
-	var count = (dnas.length - new_dnas.length) / 2;
-	while (count--) {
-		var dnapair = select_parents(dnas);
-		dnapair = dna_cross(dnapair.dna1, dnapair.dna2);
-		dna_mutate(dnapair.dna_out1);
-		dna_mutate(dnapair.dna_out2);
-		new_dnas.push(dnapair.dna_out1);
-		new_dnas.push(dnapair.dna_out2);
-	}
+	//90% previous dnas die, replaced by their offsprings.
+	pre_reproduction(dnas, function (ndnas) {
+		var new_dnas = ndnas.slice(0, Math.floor(ndnas.length * 0.1));
+		var count = (ndnas.length - new_dnas.length) / 2;
+		while (count--) {
+			var dnapair = select_parents(ndnas);
+			var cdnapair = dna_cross(dnapair.dna1, dnapair.dna2);
+			dna_mutate(cdnapair.dna_out1);
+			dna_mutate(cdnapair.dna_out2);
+			new_dnas.push(cdnapair.dna_out1);
+			new_dnas.push(cdnapair.dna_out2);
+		}
+		document.getElementById("generation").innerHTML = ++gen;
+		setTimeout(function () { reproduction(new_dnas); }, 0);
+	});
 }
-(function () {
+var nop = 80;
+function init_dna_one(w, h) {
+	var i = nop;
+	var dna = [];
+	while (i--) {
+		var v = 8;
+		dna[nop - i - 1] = { shape: [], color: {} };
+		while (v--)
+			dna[nop - i - 1].shape[v] = { x: rand_int(w), y: rand_int(h) };
+		dna[nop - i - 1].color = { r: rand_int(255), g: rand_int(255), b: rand_int(255), a: rand_int(255) };
+	}
+	return dna;
+}
+function init_dna(number, w, h) {
+	var dna = [];
+	//var templete = JSON.stringify(init_dna_one(w, h));
+	while (number--) {
+		//dna.push(dna_mutate(JSON.parse(templete)));
+		dna.push(init_dna_one(w, h));
+	}
+	return dna;
+}
+var IWIDTH, IHEIGHT;
+var maxd = 0;
+function init() {
 	"use strict";
-	var dnas = init_dna(2000);
 	var IMAGE = new Image();
 	IMAGE.src = "file:///D:/a.jpg";
-	IWIDTH = IMAGE.width;
-	IHEIGHT = IMAGE.height;
-	var canvas = document.getElementById('canvas_input');
-	CTX_INPUT = canvas.getContext('2d');
-	canvas.setAttribute('width', IWIDTH);
-	canvas.setAttribute('height', IHEIGHT);
+	setTimeout(function () {
+		IWIDTH = IMAGE.width;
+		IHEIGHT = IMAGE.height;
+		var dnas = init_dna(100, IWIDTH, IHEIGHT);
+		var canvas = document.getElementById('canvas_input');
+		CTX_INPUT = canvas.getContext('2d');
+		canvas.setAttribute('width', IWIDTH);
+		canvas.setAttribute('height', IHEIGHT);
 
-	canvas = document.getElementById('canvas_test');
-	CTX_TEST = canvas.getContext('2d');
-	canvas.setAttribute('width', IWIDTH);
-	canvas.setAttribute('height', IHEIGHT);
+		canvas = document.getElementById('canvas_test');
+		CTX_TEST = canvas.getContext('2d');
+		canvas.setAttribute('width', IWIDTH);
+		canvas.setAttribute('height', IHEIGHT);
 
-	canvas = document.getElementById('canvas_best');
-	CTX_BEST = canvas.getContext('2d');
-	canvas.setAttribute('width', IWIDTH);
-	canvas.setAttribute('height', IHEIGHT);
+		canvas = document.getElementById('canvas_best');
+		CTX_BEST = canvas.getContext('2d');
+		canvas.setAttribute('width', IWIDTH);
+		canvas.setAttribute('height', IHEIGHT);
 
-	SUBPIXELS = IWIDTH * IHEIGHT * DEPTH;
-	NORM_COEF = IWIDTH * IHEIGHT * 3 * 255;
+		canvas = document.getElementById('canvas_gbest');
+		cgbest = canvas.getContext('2d');
+		canvas.setAttribute('width', IWIDTH);
+		canvas.setAttribute('height', IHEIGHT);
 
-	// draw the image onto the canvas
-	CTX_INPUT.drawImage(IMAGE, 0, 0, IWIDTH, IHEIGHT);
+		SUBPIXELS = IWIDTH * IHEIGHT * 4;
 
-	DATA_INPUT = CTX_INPUT.getImageData(0, 0, IWIDTH, IHEIGHT).data;
+		// draw the image onto the canvas
+		CTX_INPUT.drawImage(IMAGE, 0, 0, IWIDTH, IHEIGHT);
 
-	setInterval(function () { reproduction(dnas); }, 0);
-})();
+		DATA_INPUT = CTX_INPUT.getImageData(0, 0, IWIDTH, IHEIGHT).data;
+		for (var i = 0; i < SUBPIXELS; ++i) {
+			if (i % 4 != 3) {
+				var dist = DATA_INPUT[i];
+				if (dist < 128)
+					dist = 255 - dist;
+				maxd += dist * dist;
+			}
+		}
+		reproduction(dnas);
+	}, 0);
+};
