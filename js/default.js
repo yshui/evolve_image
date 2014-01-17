@@ -295,10 +295,10 @@ function pre_reproduction(dnas, callback) {
 				min = ndnas[i].fitness;
 				draw_dna(CTX_BEST, dnas[i]);
 			}
-			if (ndnas[i].fitness < gmin) {
-				gmin = ndnas[i].fitness;
-				draw_dna(cgbest, dnas[i]);
-			}
+			//if (ndnas[i].fitness < gmin) {
+				//gmin = ndnas[i].fitness;
+				//draw_dna(cgbest, dnas[i]);
+			//}
 			if (ndnas[i].fitness > max)
 				max = ndnas[i].fitness;
 			sum += ndnas[i].fitness;
@@ -313,7 +313,7 @@ function pre_reproduction(dnas, callback) {
 		document.getElementById("fitness_p").innerHTML = min / maxd;
 		mutate_rate = 0.9;//Math.sqrt(Math.sqrt(min / maxd));
 		document.getElementById("mr").innerHTML = mutate_rate;
-		document.getElementById("gmin").innerHTML = gmin;
+		//document.getElementById("gmin").innerHTML = gmin;
 		callback.call(this, ndnas);
 	});
 }
@@ -382,13 +382,15 @@ function init_dna(number, w, h) {
 }
 var IWIDTH, IHEIGHT;
 var maxd = 0;
-function init() {
-	"use strict";
-	var IMAGE = new Image();
-	IMAGE.src = "file:///D:/a.jpg";
-	setTimeout(function () {
-		IWIDTH = IMAGE.width;
-		IHEIGHT = IMAGE.height;
+function load_image(ev) {
+	var file = ev.target.files[0];
+	var image = new Image();
+	var url = window.URL || window.webkitURL;
+	var src = url.createObjectURL(file);
+	image.src = src;
+	image.onload = function () {
+		IWIDTH = image.width;
+		IHEIGHT = image.height;
 		var dnas = init_dna(100, IWIDTH, IHEIGHT);
 		var canvas = document.getElementById('canvas_input');
 		CTX_INPUT = canvas.getContext('2d');
@@ -413,7 +415,7 @@ function init() {
 		SUBPIXELS = IWIDTH * IHEIGHT * 4;
 
 		// draw the image onto the canvas
-		CTX_INPUT.drawImage(IMAGE, 0, 0, IWIDTH, IHEIGHT);
+		CTX_INPUT.drawImage(image, 0, 0, IWIDTH, IHEIGHT);
 
 		DATA_INPUT = CTX_INPUT.getImageData(0, 0, IWIDTH, IHEIGHT).data;
 		for (var i = 0; i < SUBPIXELS; ++i) {
@@ -425,5 +427,9 @@ function init() {
 			}
 		}
 		reproduction(dnas);
-	}, 0);
-};
+	};
+}
+function init() {
+	"use strict";
+	document.getElementById("files").addEventListener('change', load_image, false);
+}
