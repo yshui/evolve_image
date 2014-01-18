@@ -157,8 +157,8 @@ function mutate_gauss(dna_out) {
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function mutate_medium(dna_out) {
-	CHANGED_SHAPE_INDEX = rand_int(dna_out.length - 1);
+function mutate_medium(dna_out, index) {
+	var CHANGED_SHAPE_INDEX = index;
 
 	var roulette = rand_float(2.0);
 
@@ -211,8 +211,8 @@ function mutate_hard(dna_out) {
 	dna_out[CHANGED_SHAPE_INDEX].shape[CHANGED_POINT_INDEX].y = rand_int(IHEIGHT);
 }
 
-function mutate_soft(dna_out) {
-	CHANGED_SHAPE_INDEX = rand_int(dna_out.length - 1);
+function mutate_soft(dna_out, index) {
+	var CHANGED_SHAPE_INDEX = index;
 
 	var roulette = rand_float(2.0);
 
@@ -272,9 +272,14 @@ function compute_fitness(dna, callback) {
 }
 var mutate_rate = 0.3;
 function dna_mutate(dna) {
-	if (Math.random(1.0) > mutate_rate)
-		return dna;
-	mutate_medium(dna);
+	for(var i = 0; i < dna.length; i++){
+		if(Math.random(1.0) > mutate_rate)
+			continue;
+		if(Math.random(1.0) > medium_rate)
+			mutate_soft(dna, i);
+		else
+			mutate_medium(dna, i);
+	}
 	return dna;
 }
 var min = 9e99;
@@ -286,6 +291,7 @@ function compute_all_fitness(id, dnas, callback) {
 		compute_all_fitness(id + 1, dnas, callback);
 	});
 }
+var medium_rate = 1;
 function pre_reproduction(dnas, callback) {
 	var i;
 	var max = 0, sum = 0.0, gmin = 9e99;
@@ -311,9 +317,10 @@ function pre_reproduction(dnas, callback) {
 			ndnas[i].prob += ndnas[i - 1].prob;
 		document.getElementById("fitness").innerHTML = min;
 		document.getElementById("fitness_p").innerHTML = min / maxd;
-		mutate_rate = 0.9;//Math.sqrt(Math.sqrt(min / maxd));
+		mutate_rate = 0.1;//Math.sqrt(Math.sqrt(min / maxd));
+		medium_rate = Math.sqrt(Math.sqrt(min/maxd));
 		document.getElementById("mr").innerHTML = mutate_rate;
-		//document.getElementById("gmin").innerHTML = gmin;
+		document.getElementById("gmin").innerHTML = "mrate:"+medium_rate;
 		callback.call(this, ndnas);
 	});
 }
@@ -327,11 +334,11 @@ function prob_select(dnas) {
 		else if (dnas[mid].prob > prob)
 			r = mid;
 		else {
-			console.log("selected:" + mid);
+			//console.log("selected:" + mid);
 			return dnas[mid];
 		}
 	}
-	console.log("selected:" + l);
+	//console.log("selected:" + l);
 	return dnas[l];
 }
 function select_parents(dnas) {
@@ -344,7 +351,10 @@ var gen = 0;
 function reproduction(dnas) {
 	//90% previous dnas die, replaced by their offsprings.
 	pre_reproduction(dnas, function (ndnas) {
-		var new_dnas = ndnas.slice(0, Math.floor(ndnas.length * 0.1));
+		var num = Math.floor(ndnas.length*0.1);
+		if(num < 2)
+			num = 2;
+		var new_dnas = ndnas.slice(0, num);
 		var count = (ndnas.length - new_dnas.length) / 2;
 		while (count--) {
 			var dnapair = select_parents(ndnas);
@@ -358,7 +368,7 @@ function reproduction(dnas) {
 		setTimeout(function () { reproduction(new_dnas); }, 0);
 	});
 }
-var nop = 80;
+var nop = 60;
 function init_dna_one(w, h) {
 	var i = nop;
 	var dna = [];
@@ -391,7 +401,7 @@ function load_image(ev) {
 	image.onload = function () {
 		IWIDTH = image.width;
 		IHEIGHT = image.height;
-		var dnas = init_dna(100, IWIDTH, IHEIGHT);
+		var dnas = init_dna(40, IWIDTH, IHEIGHT);
 		var canvas = document.getElementById('canvas_input');
 		CTX_INPUT = canvas.getContext('2d');
 		canvas.setAttribute('width', IWIDTH);
@@ -426,6 +436,7 @@ function load_image(ev) {
 				maxd += dist * dist;
 			}
 		}
+		min = maxd;
 		reproduction(dnas);
 	};
 }
