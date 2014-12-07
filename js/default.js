@@ -336,6 +336,7 @@ function pre_reproduction(dnas, callback) {
 		document.getElementById("mr").innerHTML = mutate_rate;
 		document.getElementById("gmin").innerHTML = "mrate:"+medium_rate;
 		document.getElementById("rrate").innerHTML = "rrate:"+rrate;
+		document.getElementById("ndnas").innerHTML = "ndnas:"+ndnas.length;
 		callback.call(this, ndnas);
 	});
 }
@@ -366,11 +367,11 @@ var gen = 0;
 function reproduction(dnas) {
 	//90% previous dnas die, replaced by their offsprings.
 	pre_reproduction(dnas, function (ndnas) {
-		var num = Math.floor(ndnas.length*0.1);
+		var num = Math.floor(ndnas.length*0.3);
 		if(num < 2)
 			num = 2;
 		var new_dnas = ndnas.slice(0, num);
-		var count = (ndnas.length - new_dnas.length) / 2;
+		var count = Math.floor((ndnas.length - new_dnas.length+1) / 2);
 		while (count--) {
 			var dnapair = select_parents(ndnas);
 			dna_mutate(dnapair.dna1);
