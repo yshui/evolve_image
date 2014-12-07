@@ -388,7 +388,7 @@ function reproduction(dnas) {
 		setTimeout(function () { reproduction(new_dnas); }, 0);
 	});
 }
-var nop = 30;
+var nop = 60;
 function init_dna_one(w, h) {
 	var i = nop;
 	var dna = [];
