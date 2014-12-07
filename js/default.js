@@ -40,8 +40,8 @@ function dna_cross(dna1, dna2) {
 		return;
 	var a = rand_int(dna1.length - 1);
 	var b = rand_int(dna1.length - a - 2) + a + 1;
-	var m1 = dns1.slice(a, b);
-	var m2 = dns2.slice(a, b);
+	var m1 = dna1.slice(a, b);
+	var m2 = dna2.slice(a, b);
 	var prob = Math.random();
 	if (prob < rrate)
 		m1 = m1.reverse();
