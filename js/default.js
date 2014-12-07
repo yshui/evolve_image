@@ -18,7 +18,9 @@ function draw_dna(ctx, dna, callback) {
 	for (i = 0; i < dna.length; i++) {
 		draw_shape(ctx, dna[i].shape, dna[i].color);
 	}
-	setTimeout(callback, 0);
+	if (typeof callback === "function")
+		callback();
+	//setTimeout(callback, 0);
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function rand_int(maxval) {
@@ -305,19 +307,21 @@ var medium_rate = 1;
 function pre_reproduction(dnas, callback) {
 	var i;
 	var max = 0, sum = 0.0, gmin = 9e99;
+	var gmd = 0;
 	compute_all_fitness(0, dnas, function (ndnas) {
 		for (i in ndnas) {
 			if (ndnas[i].fitness < min) {
 				min = ndnas[i].fitness;
 				draw_dna(CTX_BEST, dnas[i]);
 			}
-			//if (ndnas[i].fitness < gmin) {
-				//gmin = ndnas[i].fitness;
-				//draw_dna(cgbest, dnas[i]);
-			//}
+			if (ndnas[i].fitness < gmin) {
+				gmin = ndnas[i].fitness;
+				gmd = i;
+			}
 			if (ndnas[i].fitness > max)
 				max = ndnas[i].fitness;
 		}
+		draw_dna(cgbest, dnas[gmd]);
 		for (i in ndnas) {
 			var score = (max-ndnas[i].fitness)/(max-min);
 			score *= score;
@@ -389,7 +393,7 @@ function init_dna_one(w, h) {
 	var i = nop;
 	var dna = [];
 	while (i--) {
-		var v = 8;
+		var v = 6;
 		dna[nop - i - 1] = { shape: [], color: {} };
 		while (v--)
 			dna[nop - i - 1].shape[v] = { x: rand_int(w), y: rand_int(h) };
@@ -417,7 +421,7 @@ function load_image(ev) {
 	image.onload = function () {
 		IWIDTH = image.width;
 		IHEIGHT = image.height;
-		var dnas = init_dna(100, IWIDTH, IHEIGHT);
+		var dnas = init_dna(300, IWIDTH, IHEIGHT);
 		var canvas = document.getElementById('canvas_input');
 		CTX_INPUT = canvas.getContext('2d');
 		canvas.setAttribute('width', IWIDTH);
