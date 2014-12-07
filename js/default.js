@@ -1,4 +1,4 @@
-﻿var CTX_INPUT, CTX_TEST, CTX_BEST, cgbest;
+var CTX_INPUT, CTX_TEST, CTX_BEST, cgbest;
 var SUBPIXELS;
 var DATA_INPUT;
 function draw_shape(ctx, shape, color) {
