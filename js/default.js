@@ -127,8 +127,8 @@ function draw_dist(ctx, dist) {
 	}
 }
 
-function mutate_gauss(dna_out) {
-	CHANGED_SHAPE_INDEX = rand_int(dna_out.length - 1);
+function mutate_gauss(dna_out, index) {
+	var CHANGED_SHAPE_INDEX = index;
 
 	var roulette = rand_float(2.0);
 
@@ -288,7 +288,7 @@ function dna_mutate(dna) {
 		if(Math.random() > mutate_rate)
 			continue;
 		if(Math.random() > medium_rate)
-			mutate_soft(dna, i);
+			mutate_gauss(dna, i);
 		else
 			mutate_medium(dna, i);
 	}
