@@ -34,15 +34,24 @@ function clamp(val, minval, maxval) {
 	if (val > maxval) return maxval;
 	return val;
 }
-
+var rrate = 0.1;
 function dna_cross(dna1, dna2) {
 	if (dna1.length != dna2.length)
 		return;
 	var a = rand_int(dna1.length - 1);
 	var b = rand_int(dna1.length - a - 2) + a + 1;
+	var m1 = dns1.slice(a, b);
+	var m2 = dns2.slice(a, b);
+	var prob = Math.random();
+	if (prob < rrate)
+		m1 = m1.reverse();
+	prob = Math.random();
+	if (prob < rrate)
+		m2 = m2.reverse();
+
 	var res = {
-		dna_out1: dna1.slice(0, a).concat(dna2.slice(a, b).concat(dna1.slice(b, dna1.length))),
-		dna_out2: dna2.slice(0, a).concat(dna1.slice(a, b).concat(dna2.slice(b, dna2.length)))
+		dna_out1: dna1.slice(0, a).concat(m2.concat(dna1.slice(b, dna1.length))),
+		dna_out2: dna2.slice(0, a).concat(m1.concat(dna2.slice(b, dna2.length)))
 	};
 	if (res.dna_out1.length != dna1.length)
 		throw "length didn't match.";
@@ -78,6 +87,7 @@ function bell_precompute(range, spread, resolution) {
 			if (x != 0) dist[index++] = x;
 			accumulator -= step;
 		}
+
 	}
 	bell_offsets[range] = off;
 	return bell_distributions[range] = dist;
@@ -273,9 +283,9 @@ function compute_fitness(dna, callback) {
 var mutate_rate = 0.3;
 function dna_mutate(dna) {
 	for(var i = 0; i < dna.length; i++){
-		if(Math.random(1.0) > mutate_rate)
+		if(Math.random() > mutate_rate)
 			continue;
-		if(Math.random(1.0) > medium_rate)
+		if(Math.random() > medium_rate)
 			mutate_soft(dna, i);
 		else
 			mutate_medium(dna, i);
@@ -307,25 +317,30 @@ function pre_reproduction(dnas, callback) {
 			//}
 			if (ndnas[i].fitness > max)
 				max = ndnas[i].fitness;
-			sum += ndnas[i].fitness;
 		}
-		sum = ndnas.length * max - sum;
+		for (i in ndnas) {
+			var score = (max-ndnas[i].fitness)/(max-min);
+			score *= score;
+			ndnas[i].prob = score;
+			sum += score;
+		}
 		for (i in ndnas)
-			ndnas[i].prob = (max - ndnas[i].fitness) / sum;
+			ndnas[i].prob /= sum;
 		ndnas.sort(function (a, b) { return b.prob - a.prob; });
 		for (i = 1; i < ndnas.length; i++)
 			ndnas[i].prob += ndnas[i - 1].prob;
 		document.getElementById("fitness").innerHTML = min;
 		document.getElementById("fitness_p").innerHTML = min / maxd;
 		mutate_rate = 0.1;//Math.sqrt(Math.sqrt(min / maxd));
-		medium_rate = Math.sqrt(Math.sqrt(min/maxd));
+		medium_rate = Math.sqrt(min/maxd);
 		document.getElementById("mr").innerHTML = mutate_rate;
 		document.getElementById("gmin").innerHTML = "mrate:"+medium_rate;
+		document.getElementById("rrate").innerHTML = "rrate:"+rrate;
 		callback.call(this, ndnas);
 	});
 }
 function prob_select(dnas) {
-	var prob = Math.random(1.0);
+	var prob = Math.random();
 	var l = 0, r = dnas.length;
 	while (l < r - 1) {
 		var mid = (l + r) >> 1;
@@ -339,7 +354,7 @@ function prob_select(dnas) {
 		}
 	}
 	//console.log("selected:" + l);
-	return dnas[l];
+	return dnas[r];
 }
 function select_parents(dnas) {
 	return {
@@ -358,9 +373,9 @@ function reproduction(dnas) {
 		var count = (ndnas.length - new_dnas.length) / 2;
 		while (count--) {
 			var dnapair = select_parents(ndnas);
+			dna_mutate(dnapair.dna1);
+			dna_mutate(dnapair.dna2);
 			var cdnapair = dna_cross(dnapair.dna1, dnapair.dna2);
-			dna_mutate(cdnapair.dna_out1);
-			dna_mutate(cdnapair.dna_out2);
 			new_dnas.push(cdnapair.dna_out1);
 			new_dnas.push(cdnapair.dna_out2);
 		}
@@ -368,7 +383,7 @@ function reproduction(dnas) {
 		setTimeout(function () { reproduction(new_dnas); }, 0);
 	});
 }
-var nop = 60;
+var nop = 30;
 function init_dna_one(w, h) {
 	var i = nop;
 	var dna = [];
@@ -401,7 +416,7 @@ function load_image(ev) {
 	image.onload = function () {
 		IWIDTH = image.width;
 		IHEIGHT = image.height;
-		var dnas = init_dna(40, IWIDTH, IHEIGHT);
+		var dnas = init_dna(100, IWIDTH, IHEIGHT);
 		var canvas = document.getElementById('canvas_input');
 		CTX_INPUT = canvas.getContext('2d');
 		canvas.setAttribute('width', IWIDTH);
